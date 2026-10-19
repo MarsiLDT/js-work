@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+Првивет
+<script>
+    //В каталоге заданы товары с названием, ценой, количеством и категорией.
+    // Необходимо написать функции для расчёта стоимости, поиска и отбора товаров,
+    // а затем вывести краткий отчёт в консоль. Каждую операцию следует оформить отдельной функцией,
+    // чтобы её результат можно было проверить независимо.
+    const products = [
+        {id: 1, name: 'Laptop', price: 80000, quantity: 2, category: 'electronics'},
+        {id: 2, name: 'Mouse', price: 2500, quantity: 5, category: 'electronics'},
+        {id: 3, name: 'Keyboard', price: 4500, quantity: 3, category: 'electronics'},
+        {id: 4, name: 'Chair', price: 18000, quantity: 0, category: 'furniture'},
+        {id: 5, name: 'Desk', price: 25000, quantity: 2, category: 'furniture'}
+    ];
+
+    // 1. Реализовать getProductTotal(product), возвращающую стоимость всего количества конкретного товара.
+    function getProductTotal(product) {
+        // for (item of products){
+        //     if (item.name === product){
+        //         console.log(item.price * item.quantity)
+        //     }
+        // }
+        const one_element = products.filter(elem => elem.name === product)
+        const sum = one_element[0].price * one_element[0].quantity
+        console.log(`1. Стоимость всего количесва товара ${product}: ${sum}руб`)
+    }
+
+    getProductTotal('Mouse')
+
+    // 2. Реализовать getTotalInventoryValue(products), возвращающую общую стоимость каталога.
+    function getTotalInventoryValue(products) {
+        const sumcat = products.reduce(
+            (sum, product) =>
+                sum + product.price * product.quantity,
+            0)
+        return `2. Стоимость каталога ${sumcat}руб`
+    }
+
+    console.log(getTotalInventoryValue(products))
+
+    // 3. Реализовать getMostExpensiveProduct(products), возвращающую товар с максимальной ценой за единицу.
+    function getMostExpensiveProduct(products) {
+        const filtered = products.reduce((big, product) => big = Math.max(big, product.price), 0)
+        const one_element = products.filter(elem => elem.price === filtered)
+        return `3. Самый дорогой товар: ${one_element[0].name}, цена ${one_element[0].price}руб`
+    }
+    console.log(getMostExpensiveProduct(products))
+
+    // 4. Реализовать filterByCategory(products, category), возвращающую новый массив выбранной категории.
+    function filterByCategory(products, category) {
+        return products.filter(elem => elem.category === category)
+    }
+    console.log('4.',filterByCategory(products, 'furniture'))
+
+    // 5. Реализовать findProduct(products, id), возвращающую товар либо undefined.
+    function findProduct(products, id){
+        return products.filter(item => item.id === id)[0]
+    }
+    console.log('5.', findProduct(products, 2))
+
+    // 6. Реализовать getAvailableProducts(products), возвращающую товары с quantity больше нуля.
+    function getAvailableProducts(products){
+        return products.filter(item => item.quantity > 0)
+    }
+    console.log('6.', getAvailableProducts(products))
+    // 7. Сформировать в консоль небольшой отчёт с результатами вызова функций.
+    // 8. Не изменять исходный массив products непосредственно.
+
+    //1. Реализовать getCategoryStatistics(products), возвращающую объект со статистикой по категориям.
+    function getCategoryStatistics(products) {
+        return products.reduce((statistic, product) =>{
+                statistic
+                statistic += product.category
+            },{}
+        )
+    }
+
+    console.log('7.', getCategoryStatistics(products));
+</script>
+</body>
+</html>

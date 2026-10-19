@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PokéAPI: Карточки покемонов</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #load-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #ffcb05;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        #load-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status {
+            min-height: 24px;
+            margin-bottom: 20px;
+            font-size: 15px;
+            color: #333;
+        }
+
+        .status.error {
+            color: #c22e28;
+            font-weight: bold;
+        }
+
+        .status.warning {
+            color: #b8860b;
+            font-weight: bold;
+        }
+
+        .pokemon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .pokemon-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .pokemon-card:hover {
+            transform: scale(1.05);
+        }
+
+        .pokemon-card img {
+            width: 120px;
+            height: 120px;
+            image-rendering: pixelated;
+        }
+
+        .sprite-placeholder {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 42px;
+            color: #bbb;
+            background-color: #f7f7f7;
+            border-radius: 50%;
+        }
+
+        .pokemon-card h3 {
+            margin: 10px 0 5px;
+            text-transform: capitalize;
+        }
+
+        .pokemon-card .types {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .type-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .pokemon-card .stats {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 1px 4px;
+        }
+
+        .stat-name {
+            color: #666;
+        }
+
+        .stat-value {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<h1>Покедекс</h1>
+<button id="load-btn">Показать покемонов</button>
+<div id="status" class="status" role="status" aria-live="polite"></div>
+<div id="pokemon-container" class="pokemon-grid"></div>
+
+<script>
+    const API_BASE_URL = 'https://pokeapi.co/api/v2';
+
+    const loadBtn = document.getElementById('load-btn');
+    const container = document.getElementById('pokemon-container');
+    const statusEl = document.getElementById('status');
+
+    let latestRequestId = 0;
+
+    function setStatus(text, kind = '') {
+        statusEl.textContent = text;
+        statusEl.className = 'status ' + kind;
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    async function fetchPokemonList(limit = 20, offset = 0) {
+        const response = await fetch(`${API_BASE_URL}/pokemon?limit=${limit}&offset=${offset}`);
+        if (!response.ok) {
+            throw new Error(`Ошибка HTTP: ${response.status}`);
+        }
+        const data = await response.json();
+        if (!Array.isArray(data.results)) {
+            throw new Error('Неожиданный формат ответа: отсутствует список покемонов');
+        }
+        return data.results;
+    }
+
+    async function fetchPokemonDetails(url) {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Ошибка HTTP: ${response.status}`);
+        }
+        return await response.json();
+    }
+
+    function getTypeColor(type) {
+        const colors = {
+            normal: '#A8A77A', fire: '#EE8130', water: '#6390F0', electric: '#F7D02C',
+            grass: '#7AC74C', ice: '#96D9D6', fighting: '#C22E28', poison: '#A33EA1',
+            ground: '#E2BF65', flying: '#A98FF3', psychic: '#F95587', bug: '#A6B91A',
+            rock: '#B6A136', ghost: '#735797', dragon: '#6F35FC', dark: '#705746',
+            steel: '#B7B7CE', fairy: '#D685AD'
+        };
+        return colors[type] || '#777';
+    }
+
+    const STAT_NAMES = {
+        'hp': 'HP',
+        'attack': 'ATK',
+        'defense': 'DEF',
+        'special-attack': 'SPA',
+        'special-defense': 'SPD',
+        'speed': 'SPE'
+    };
+
+    function getSpriteUrl(pokemon) {
+        if (pokemon?.sprites?.front_default) {
+            return pokemon.sprites.front_default;
+        }
+        const artwork = pokemon?.sprites?.other?.['official-artwork']?.front_default;
+        return artwork || '';
+    }
+
+    function createPokemonCard(pokemon) {
+        const id = pokemon?.id ?? '—';
+        const name = typeof pokemon?.name === 'string' ? pokemon.name : 'неизвестно';
+        const spriteUrl = getSpriteUrl(pokemon);
+
+        const types = Array.isArray(pokemon?.types)
+            ? pokemon.types.map(t => t?.type?.name).filter(Boolean)
+            : [];
+
+        const stats = Array.isArray(pokemon?.stats) ? pokemon.stats : [];
+
+        const typesHtml = types.length
+            ? types.map(type => {
+                const safeType = escapeHtml(type);
+                return `<span class="type-badge" style="background-color: ${getTypeColor(type)};">${safeType}</span>`;
+            }).join('')
+            : `<span class="type-badge" style="background-color: #777;">—</span>`;
+
+        const statsHtml = stats.length
+            ? stats.map(s => {
+                const statName = s?.stat?.name || '';
+                const label = STAT_NAMES[statName] || statName || '—';
+                const value = s?.base_stat ?? '—';
+                return `<div class="stat">
+                    <span class="stat-name">${escapeHtml(label)}</span>
+                    <span class="stat-value">${escapeHtml(value)}</span>
+                </div>`;
+            }).join('')
+            : `<div class="stat"><span class="stat-name">Нет данных</span></div>`;
+
+        const imgHtml = spriteUrl
+            ? `<img src="${escapeHtml(spriteUrl)}" alt="${escapeHtml(name)}">`
+            : `<div class="sprite-placeholder" aria-hidden="true">?</div>`;
+
+        return `
+        <div class="pokemon-card">
+            ${imgHtml}
+            <h3>#${escapeHtml(id)} ${escapeHtml(name)}</h3>
+            <div class="types">${typesHtml}</div>
+            <div class="stats">${statsHtml}</div>
+        </div>`;
+    }
+
+    async function loadInBatches(urls, size = 20) {
+        const out = [];
+        for (let i = 0; i < urls.length; i += size) {
+            const batch = urls.slice(i, i + size);
+            const res = await Promise.allSettled(batch.map(u => fetchPokemonDetails(u)));
+            out.push(...res);
+        }
+        return out;
+    }
+
+    async function loadAndDisplayPokemon() {
+        const requestId = ++latestRequestId;
+
+        loadBtn.disabled = true;
+        container.replaceChildren();
+        setStatus('Загрузка...');
+
+        try {
+            const pokemonList = await fetchPokemonList(1000, 0);
+
+            if (requestId !== latestRequestId) return;
+
+            if (pokemonList.length === 0) {
+                setStatus('Данных нет: API вернул пустой список.');
+                return;
+            }
+
+            const results = await loadInBatches(pokemonList.map(p => p.url));
+
+            if (requestId !== latestRequestId) return;
+
+            const fulfilled = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+            const rejected = results.filter(r => r.status === 'rejected');
+
+            if (fulfilled.length === 0) {
+                setStatus('Не удалось загрузить карточки покемонов. Попробуйте ещё раз.', 'error');
+                console.error('Все детальные запросы завершились ошибкой:',
+                    rejected.map(r => r.reason));
+                return;
+            }
+
+            container.innerHTML = fulfilled.map(createPokemonCard).join('');
+
+            if (rejected.length > 0) {
+                setStatus(
+                    `Загружено ${fulfilled.length} из ${results.length}. Часть карточек получить не удалось.`,
+                    'warning'
+                );
+                console.error('Часть запросов завершилась ошибкой:',
+                    rejected.map(r => r.reason));
+            } else {
+                setStatus(`Загружено покемонов: ${fulfilled.length}`);
+            }
+        } catch (error) {
+            if (requestId !== latestRequestId) return;
+            console.error('Ошибка при загрузке покемонов:', error);
+            setStatus('Не удалось загрузить данные. Попробуйте позже.', 'error');
+        } finally {
+
+            if (requestId === latestRequestId) {
+                loadBtn.disabled = false;
+            }
+        }
+    }
+
+    loadBtn.addEventListener('click', loadAndDisplayPokemon);
+</script>
+</body>
+</html>
