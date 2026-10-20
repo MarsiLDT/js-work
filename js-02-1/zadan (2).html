@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang='ru'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Менеджер задач</title>
+    <script src='script.js' defer></script>
+</head>
+<body>
+<main>
+    <h1>Менеджер задач</h1>
+
+    <form id='task-form'>
+        <label for='task-title'>Новая задача</label>
+        <input id='task-title' name='title' type='text'
+               aria-describedby='title-error'>
+        <p id='title-error' class='field-error' aria-live='polite'></p>
+        <button type='submit'>Добавить</button>
+    </form>
+
+    <label for='task-filter'>Показать</label>
+    <select id='task-filter'>
+        <option value='all'>Все задачи</option>
+        <option value='active'>Активные</option>
+        <option value='completed'>Выполненные</option>
+    </select>
+
+    <p id='task-count'>Всего задач: 0</p>
+    <ul id='task-list'></ul>
+
+</main>
+</body>
+</html>
